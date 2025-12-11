@@ -1,0 +1,409 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sam-app
+
+  Sample SAM Template for sam-app
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  BikeAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      Auth:
+        Authorizers:
+            CognitoAuthorizer:
+              UserPoolArn: !GetAtt "CognitoUserPool.Arn"
+
+  ProductsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: Products
+      AttributeDefinitions:
+        -
+          AttributeName: id
+          AttributeType: S
+      KeySchema:
+        -
+          AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  OrdersTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: Orders
+      AttributeDefinitions:
+      -
+        AttributeName: id
+        AttributeType: S
+      KeySchema:
+      -
+        AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  InventoryTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: Inventory
+      AttributeDefinitions:
+      -
+        AttributeName: id
+        AttributeType: S
+      KeySchema:
+      -
+        AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  GetProductsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: "/sam-app/GetProductsFunction"
+
+  GetProductsFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GetProductsFunctionLogGroup
+      CodeUri: handlers/get_products
+      Handler: get_products.lambda_handler
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Events:
+        GetProducts:
+          Type: Api 
+          Properties:
+            RestApiId: !Ref BikeAPI
+            Path: /get_products
+            Method: get
+
+  GetOrdersFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/GetOrdersFunction"
+
+
+  GetOrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GetOrdersFunctionLogGroup
+      CodeUri: handlers/get_orders
+      Handler: get_orders.lambda_handler
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Events:
+        GetOrders:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BikeAPI
+            Path: /orders
+            Method: get
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  GetOrderDetailsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/GetOrderDetailsFunction"
+
+  GetOrderDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GetOrderDetailsFunctionLogGroup
+      CodeUri: handlers/get_order
+      Handler: get_order.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      Events:
+        GetOrderDetails:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BikeAPI
+            Path: /orders/{order_id}
+            Method: get
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  CreateOrderFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/CreateOrderFunction"
+
+  CreateOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref CreateOrderFunctionLogGroup
+      CodeUri: handlers/create_order
+      Handler: create_order.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      Events:
+        CreateOrder:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BikeAPI
+            Path: /orders
+            Method: post
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: bike_app
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      AutoVerifiedAttributes:
+        - email
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+            AllowAdminCreateUserOnly: true
+      
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: bike_app_client
+      UserPoolId: !Ref CognitoUserPool
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      AllowedOAuthFlowsUserPoolClient: true  
+      AllowedOAuthFlows:
+        - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - aws.cognito.signin.user.admin
+      CallbackURLs:
+        - http://localhost:8081/absproxy/8081 # REPLACE WITH BIKE APP URL
+      LogoutURLs:
+        - http://localhost:8081/absproxy/8081/ # REPLACE WITH BIKE APP URL
+      SupportedIdentityProviders:
+        - COGNITO
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: ah-2025-12-10 # REPLACE with something unique, such as using your initials and the current date for the domain name; for example, abc-2024-04-28. You can add extra characters if needed.
+      UserPoolId: !Ref CognitoUserPool
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: EmailReport
+      KmsMasterKeyId: alias/aws/sns
+
+  
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SNSTopic
+      Protocol: email
+      Endpoint: ash.hari12345@gmail.com
+      
+  StateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      DefinitionSubstitutions:
+        GenerateHTMLArn: !GetAtt GenerateHTMLFunction.Arn
+        GeneratePresignedURLArn: !GetAtt GeneratePresignedURLFunction.Arn
+        GenerateReportDataArn: !GetAtt GenerateReportDataFunction.Arn
+        SNSTopicArn: !Ref SNSTopic
+      Definition:
+        Comment: Report Generation State Machine
+        StartAt: GenerateReportData
+        States:
+          GenerateReportData:
+            Type: Task
+            Resource: "${GenerateReportDataArn}"
+            Next: Parallel
+          Parallel:
+            Type: Parallel
+            Branches:
+              - StartAt: GenerateHTML
+                States:
+                  GenerateHTML:
+                    Type: Task
+                    Resource: "${GenerateHTMLArn}"
+                    End: true
+              - StartAt: GeneratePresignedURL
+                States:
+                  GeneratePresignedURL:
+                    Type: Task
+                    Resource: "${GeneratePresignedURLArn}"
+                    End: true
+            Next: TriggerSNS
+          TriggerSNS:
+            Type: Task
+            Resource: arn:aws:states:::sns:publish
+            Parameters:
+              TopicArn: "${SNSTopicArn}"
+              Message.$: "$"
+            End: true
+
+  CreateReportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/CreateReportFunction"
+
+  CreateReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref CreateReportFunctionLogGroup
+      CodeUri: handlers/create_report
+      Handler: create_report.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+      Events:
+        CreateReport:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BikeAPI
+            Path: /create-report
+            Method: post
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  GeneratePresignedURLFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/GeneratePresignedURLFunction"
+
+  GeneratePresignedURLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GeneratePresignedURLFunctionLogGroup
+      CodeUri: handlers/generate_presigned_url
+      Handler: generate_presigned_url.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+
+  GenerateReportDataFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/GenerateReportDataFunction"
+
+  GenerateReportDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GenerateReportDataFunctionLogGroup
+      CodeUri: handlers/generate_report_data
+      Handler: generate_report_data.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+  
+  GenerateHTMLFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: !Sub "/sam-app/GenerateHTMLFunction"
+
+  GenerateHTMLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      LoggingConfig:
+        LogGroup: !Ref GenerateHTMLFunctionLogGroup
+      CodeUri: handlers/generate_html
+      Handler: generate_html.lambda_handler
+      Runtime: python3.12
+      Timeout: 7
+      Architectures:
+        - x86_64
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
+
+Outputs:
+  MicroserviceApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  GetProductsFunction:
+    Description: "Get_Products Lambda Function ARN"
+    Value: !GetAtt GetProductsFunction.Arn
+  EndpointForGetProducts:
+    Description: "API Gateway endpoint URL for Prod stage for Get_Products function"
+    Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/get_products"
+  EndpointForGetOrders:
+      Description: "API Gateway endpoint URL for Prod stage for Get Order History"
+      Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/orders"
+  EndpointForGetOrderDetails:
+    Description: "API Gateway endpoint URL for Prod stage for Get Order Details"
+    Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/orders/{order_id}"
+  EndpointForCreateOrder:
+    Description: "API Gateway endpoint URL for Prod stage for Create Order"
+    Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/orders"
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+  CognitoUserPoolDomain:
+    Description: "Cognito User Pool Domain"
+    Value: !Ref CognitoUserPoolDomain
+  EndpointForCreateReport:
+    Description: "API Gateway endpoint URL for Prod stage for Create Report"
+    Value: !Sub "https://${BikeAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/create-report"
+  StateMachineArn:
+    Description: "Step Functions state machine arn for email report"
+    Value: !Ref StateMachine  
