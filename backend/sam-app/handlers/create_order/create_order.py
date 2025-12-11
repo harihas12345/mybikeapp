@@ -54,9 +54,10 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'body': json.dumps({'message': 'Order created successfully', 'order_id': order_id}),
             'headers': {
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With',
+                'Access-Control-Allow-Origin': 'https://main.d5yg8u5ydak1.amplifyapp.com',
+                'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+                'Access-Control-Allow-Credentials': 'true'
             }
         }
         
@@ -66,9 +67,10 @@ def lambda_handler(event, context):
             'statusCode': 500,
             'body': json.dumps({'message': 'Error creating order', 'error': str(e)}),
             'headers': {
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With',
+                'Access-Control-Allow-Origin': 'https://main.d5yg8u5ydak1.amplifyapp.com',
+                'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+                'Access-Control-Allow-Credentials': 'true'
             }
         }
 

@@ -16,9 +16,10 @@ def lambda_handler(event, context):
 
     return {
         'headers': {
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With',
+            'Access-Control-Allow-Origin': 'https://main.d5yg8u5ydak1.amplifyapp.com',
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+            'Access-Control-Allow-Credentials': 'true'
         },
         'statusCode': 200,
         'body': json.dumps({'executionArn': response['executionArn']})

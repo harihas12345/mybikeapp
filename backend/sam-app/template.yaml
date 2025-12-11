@@ -20,8 +20,9 @@ Resources:
       StageName: Prod
       Cors:
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Requested-With'"
+        AllowOrigin: "'https://main.d5yg8u5ydak1.amplifyapp.com'"
+        AllowCredentials: true
       Auth:
         Authorizers:
             CognitoAuthorizer:
@@ -89,7 +90,7 @@ Resources:
       CodeUri: handlers/get_products
       Handler: get_products.lambda_handler
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
         - x86_64
       Events:
@@ -115,7 +116,7 @@ Resources:
       CodeUri: handlers/get_orders
       Handler: get_orders.lambda_handler
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
       - x86_64
       Events:
@@ -141,7 +142,7 @@ Resources:
         LogGroup: !Ref GetOrderDetailsFunctionLogGroup
       CodeUri: handlers/get_order
       Handler: get_order.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
       - x86_64
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
@@ -168,7 +169,7 @@ Resources:
         LogGroup: !Ref CreateOrderFunctionLogGroup
       CodeUri: handlers/create_order
       Handler: create_order.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
         - x86_64
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
@@ -224,9 +225,11 @@ Resources:
         - openid
         - aws.cognito.signin.user.admin
       CallbackURLs:
-        - http://localhost:8081/absproxy/8081 # REPLACE WITH BIKE APP URL
+        - https://main.d5yg8u5ydak1.amplifyapp.com/
+        - http://localhost:8081/absproxy/8081 # Keep for local development
       LogoutURLs:
-        - http://localhost:8081/absproxy/8081/ # REPLACE WITH BIKE APP URL
+        - https://main.d5yg8u5ydak1.amplifyapp.com/
+        - http://localhost:8081/absproxy/8081/ # Keep for local development
       SupportedIdentityProviders:
         - COGNITO
 
@@ -304,7 +307,7 @@ Resources:
         LogGroup: !Ref CreateReportFunctionLogGroup
       CodeUri: handlers/create_report
       Handler: create_report.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
         - x86_64
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
@@ -331,7 +334,7 @@ Resources:
         LogGroup: !Ref GeneratePresignedURLFunctionLogGroup
       CodeUri: handlers/generate_presigned_url
       Handler: generate_presigned_url.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
         - x86_64
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
@@ -349,7 +352,7 @@ Resources:
         LogGroup: !Ref GenerateReportDataFunctionLogGroup
       CodeUri: handlers/generate_report_data
       Handler: generate_report_data.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Architectures:
         - x86_64
       Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LambdaApplicationRoleSam"
@@ -367,7 +370,7 @@ Resources:
         LogGroup: !Ref GenerateHTMLFunctionLogGroup
       CodeUri: handlers/generate_html
       Handler: generate_html.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.10
       Timeout: 7
       Architectures:
         - x86_64
